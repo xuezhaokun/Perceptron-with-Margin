@@ -11,7 +11,6 @@ import weka.core.Instance;
 import weka.core.Instances;
 public class Perceptron {
 	private static int iterations = 50; //I
-	private static double tau = Double.NEGATIVE_INFINITY;
 	/**
 	 * read data from file using weka instance feature
 	 * @param filename input file name
@@ -43,7 +42,7 @@ public class Perceptron {
 		return list_data;
 	}
 	
-	public static void calculateTau(List<PwMData> data){
+	private static double calculateTau(List<PwMData> data){
 		double norm  = 0;
 		for(PwMData d : data){
 			for(Double x : d.getData()){
@@ -51,16 +50,48 @@ public class Perceptron {
 			}
 		}
 		norm = Math.sqrt(norm);
-		tau = 0.1*(norm/data.size());
+		double tau = 0.1*(norm/data.size());
+		return tau;
 	}
 	
 	public static double[] primalPwM(List<PwMData> data){
-		for(PwMData d : data){
-			for(Double x : d.getData()){
-				
+		int w_size = data.get(0).getNum_attributes();
+		double[] w = new double[w_size];
+		double tau = calculateTau(data);
+		for(int i = 0; i < iterations; i++){
+			for(PwMData d : data){
+				double innerProductOfwAndx = calculatePrimalInnerProduct(w, d.getData());
+				int predict = signFunction(innerProductOfwAndx);
+				int dataClassifier = d.getClassifier();
+				if(dataClassifier*innerProductOfwAndx < tau){
+					for(int k = 0; k < w_size; k++){
+						w[k] = w[k] + dataClassifier*d.getData().get(k);
+					}
+				}
 			}
 		}
+		return w;
 	}
+	
+	private static double calculatePrimalInnerProduct(double[] vector1, List<Double> data){
+		double sum = 0;
+		if(vector1.length != data.size()){
+			throw new IllegalArgumentException("Two vectors do not have same length");
+		}else{
+			for(int k = 0; k < vector1.length; k++){
+				sum += vector1[k] * data.get(k);
+			}
+		}
+		return sum;
+	}
+	
+	private static int signFunction(double d){
+		if(d >= 0){
+			return 1;
+		}else{
+			return -1;
+		}
+	} 
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
