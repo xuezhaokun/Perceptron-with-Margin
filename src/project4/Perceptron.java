@@ -85,6 +85,40 @@ public class Perceptron {
 		return sum;
 	}
 	
+	private static double[] dualPwM(List<PwMData> data){
+		int trainingDataSize = data.size();
+		double[] alpha = new double[trainingDataSize];
+		double tau = calculateTau(data);
+		for(int j = 0; j < iterations; j++){
+			for(int i = 0; i < data.size(); i++){
+				PwMData d = data.get(i);
+				double dualSum = 0;
+				int classifier = d.getClassifier();
+				for(int k = 0; k < trainingDataSize; k++){
+					double innerProductOfTwoData = calculateDualInnerProduct(data.get(k).getData(), d.getData());
+					dualSum += alpha[k]*data.get(k).getClassifier()*innerProductOfTwoData;
+				}
+				int predict = signFunction(dualSum);
+				if(classifier*dualSum < tau){
+					alpha[i] = alpha[i] + 1;
+				}
+			}
+		}
+		return alpha;
+	}
+	
+	private static double calculateDualInnerProduct(List<Double> data1, List<Double> data2){
+		double sum = 0;
+		if(data1.size() != data2.size()){
+			throw new IllegalArgumentException("Two vectors do not have same length");
+		}else{
+			for(int k = 0; k < data1.size(); k++){
+				sum += data1.get(k) * data2.get(k);
+			}
+		}
+		return sum;
+	}
+	
 	private static int signFunction(double d){
 		if(d >= 0){
 			return 1;
@@ -92,6 +126,14 @@ public class Perceptron {
 			return -1;
 		}
 	} 
+	
+	private static double polyKernel(double[] u, double[] v, int d){
+		return 0;
+	}
+	
+	private static double RBFKernel(double[] u, double[] v, double s){
+		return 0;
+	}
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
