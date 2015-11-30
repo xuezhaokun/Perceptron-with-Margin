@@ -1,6 +1,7 @@
 package project4;
 
 import java.util.List;
+
 /**
  * KNN data for each record of data
  * @author Zhaokun Xue
@@ -22,9 +23,15 @@ public class PwMData {
 		this.data = data;
 		this.classifier = classifier;
 		this.distance = Double.POSITIVE_INFINITY;
-		this.num_attributes = data.size()-1;
+		this.num_attributes = data.size();
 	}
 	
+	@Override
+	public String toString() {
+		return "PwMData [data=" + data + ", classifier=" + classifier + ", distance=" + distance + ", num_attributes="
+				+ num_attributes + "]";
+	}
+
 	// getters and setters
 	public List<Double> getData() {
 		return data;
@@ -53,5 +60,17 @@ public class PwMData {
 	public void setNum_attributes(int num_attributes) {
 		this.num_attributes = num_attributes;
 	}
-	
+	/*public static double dist(PwMData p1, PwMData p2){
+		List<Double> p1_data = p1.getData();
+		List<Double> p2_data = p2.getData();
+		double distance = 0;
+		if(p1_data.size() == p2_data.size()){
+			for (int i = 0; i < p1_data.size(); i++){
+				double diff = p1_data.get(i) - p2_data.get(i);
+				distance += Math.pow(diff, 2);
+			}
+			distance = Math.sqrt(distance);
+		}
+		return distance;
+	}*/
 }
