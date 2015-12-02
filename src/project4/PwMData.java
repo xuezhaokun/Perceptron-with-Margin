@@ -26,11 +26,7 @@ public class PwMData {
 		this.num_attributes = data.size();
 	}
 	
-	@Override
-	public String toString() {
-		return "PwMData [data=" + data + ", classifier=" + classifier + ", distance=" + distance + ", num_attributes="
-				+ num_attributes + "]";
-	}
+	
 
 	// getters and setters
 	public List<Double> getData() {
@@ -60,6 +56,17 @@ public class PwMData {
 	public void setNum_attributes(int num_attributes) {
 		this.num_attributes = num_attributes;
 	}
+
+
+
+	@Override
+	public String toString() {
+		return "PwMData [data=" + data + ", classifier=" + classifier + ", distance=" + distance + ", num_attributes="
+				+ num_attributes + "]";
+	}
+	
+	
+	
 	/*public static double dist(PwMData p1, PwMData p2){
 		List<Double> p1_data = p1.getData();
 		List<Double> p2_data = p2.getData();

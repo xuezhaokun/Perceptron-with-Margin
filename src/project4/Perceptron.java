@@ -11,7 +11,7 @@ import weka.core.Instance;
 import weka.core.Instances;
 
 public class Perceptron {
-	private static int iterations = 50; //I
+	//private static int iterations = 50; //I
 	private List<PwMData> trainData;
 	private List<PwMData> testData;
 	
@@ -43,165 +43,178 @@ public class Perceptron {
 			Instance current_instance = read_data.instance(i);
 			int num_attributes = current_instance.numAttributes() ;
 			int classifier = (int) current_instance.value(num_attributes - 1);
+			if(classifier == 0){
+				classifier = -1;
+			}
 			for(int j = 0; j < num_attributes - 1; j++){
 				attributes.add(current_instance.value(j));
 			}
 			PwMData pwmData = new PwMData(attributes, classifier); 
 			list_data.add(pwmData);
 		}
+		inputReader.close();
 		return list_data;
 	}
-	
-	
+
+	// primal perceptron
 	public double[] primalPwM(){
-		List<PwMData> data = this.getTrainData();
-		int w_size = data.get(0).getNum_attributes()+1;
-		double[] w = new double[w_size];
-		double tau = calculateTau(data);
-		for(PwMData p : data){
-			double featureConstant = 1;
-			List<Double> newData = p.getData();
-			newData.add(featureConstant);
-			p.setData(newData);
+		List<PwMData> trainDataSet = this.getTrainData(); // get train data
+		int trainSize = trainDataSet.size();
+		int length = trainDataSet.get(0).getNum_attributes() + 1; // w size 
+		double[] w = new double[length]; // init w to 0s
+		// add constant feature with value 1 to data
+		for(PwMData p : trainDataSet){
+			double featureConstant = 1; // constant feature
+			List<Double> currentData = p.getData();
+			currentData.add(featureConstant);
+			p.setData(currentData);
 		}
-		for(int i = 0; i < iterations; i++){
-			for(PwMData pdata : data){
-				List<Double> d = pdata.getData();
-				double innerProductOfwAndx = calculatePrimalInnerProduct(w, d);
-				int predict = signFunction(innerProductOfwAndx);
-				int dataClassifier = pdata.getClassifier();
-				if((dataClassifier * innerProductOfwAndx) < tau){
-					//System.out.println("update w");
-					for(int k = 0; k < w_size; k++){
-						w[k] = w[k] + dataClassifier * (d.get(k));
+		double gamma = calculateGamma(trainDataSet); // calculate gamma
+		// repeat for 50 iterations
+		for(int n = 0; n < 50; n++){
+			for(int i = 0; i < trainSize; i++){
+				PwMData pi = trainDataSet.get(i);
+				List<Double> xi = pi.getData(); // xi
+				int yi = pi.getClassifier(); // yi
+				double innerProductOfwx = calculatePrimalInnerProduct(w, xi);
+				int o = sign(innerProductOfwx);
+				if((yi * innerProductOfwx) < gamma){
+					for(int k = 0; k < w.length; k++){
+						w[k] = w[k] + (yi * xi.get(k));
 					}
 				}
 			}
 		}
-
 		return w;
 	}
-	
 
-	// kernel = 0 polyKernel, kernel = 1 rbfKernel
+	// dual/kernel perceptron polyKernel = 0; rbfKernel = 1. param: d->polykernel;s->rbfkernel
 	public double[] dualPwM(int kernel, double param){
-		List<PwMData> data = this.getTrainData(); 
-		int trainingDataSize = data.size();
-		double[] alpha = new double[trainingDataSize];
-		double tau = calculateKernelTau(kernel, param);
-		System.out.println(alpha.length +", tau: "+tau);
-		
-		for(int j = 0; j < iterations; j++){
-			
-			for(int i = 0; i < data.size(); i++){
-				//PwMData d = data.get(i); 
-				List<Double> xi = data.get(i).getData();
-				double dualSum = 0;
-				
-				int yi = data.get(i).getClassifier();//classifier of xi
-				
-				for(int k = 0; k < trainingDataSize; k++){
-					List<Double> xk = data.get(k).getData();
-					int yk = data.get(k).getClassifier();
-					double kernelResult = 0;
-					
-					if(kernel == 0){
-						kernelResult = polyKernel(xk, xi, param);
-					}else if (kernel == 1){
-						kernelResult = rbfKernel(xk, xi, param);
+		List<PwMData> trainDataSet = this.getTrainData(); // get trainning data 
+		int trainSize = trainDataSet.size(); // training data size
+		double[] alpha = new double[trainSize]; // init alpha with 0s
+		double tau = calculateKernelGamma(trainDataSet, kernel, param);
+		// repeat for 50 iterations
+		for(int n = 0; n < 50; n++){
+			// iterate each training data
+			for(int i = 0; i < trainSize; i++){
+				PwMData pi = trainDataSet.get(i); // current data object
+				List<Double> xi = pi.getData(); // current data
+				int yi = pi.getClassifier(); // current data classifier
+				double sumForxi = 0; //sum for each x over k
+				// iterate each training data
+				for(int k = 0; k < trainSize; k++){
+					PwMData pk = trainDataSet.get(k); // current data k
+					List<Double> xk = pk.getData(); // xk
+					int yk = pk.getClassifier(); // yk
+					double tempSum = 0; // current sum
+					if(kernel == 0){ // polykernel
+						tempSum = alpha[k] * yk * polyKernel(xk, xi, param); 
+					}else if(kernel == 1){ // rbfkernel
+						tempSum = alpha[k] * yk * rbfKernel(xk, xi, param);
 					}else{
 						throw new IllegalArgumentException("No such kernel");
 					}
-					dualSum += alpha[k] * yk * kernelResult;
+					sumForxi = sumForxi + tempSum;
 				}
-				
-				int predict = signFunction(dualSum);
-				if(yi*dualSum < tau){
+				int o = sign(sumForxi);
+				if((yi * sumForxi) < tau){
 					alpha[i] = alpha[i] + 1;
 				}
 			}
-			
 		}
 		return alpha;
 	}
-	
-	public double calculatePrimalInnerProduct(double[] vector1, List<Double> data){
-		double sum = 0;
-		if(vector1.length != data.size()){
-			System.out.println(data);
-			throw new IllegalArgumentException("Two vectors do not have same length");
-		}else{
-			for(int k = 0; k < vector1.length; k++){
-				sum += vector1[k] * data.get(k);
+
+	// calculate gamma for primal perceptron
+	public double calculateGamma(List<PwMData> trainDataSet){
+		double normSum = 0; // init sum of norm to 0
+		int trainSize = trainDataSet.size(); // training data size
+		// iterate each data in the training data
+		for(PwMData p : trainDataSet){
+			List<Double> xi = p.getData();// current data
+			double xi_norm = 0; // current data norm init to be 0
+			// iterate each feature
+			for(Double d : xi){ 
+				xi_norm += Math.pow(d, 2); // each feature's square
 			}
+			xi_norm = Math.sqrt(xi_norm); // current data norm
+			normSum = normSum + xi_norm; // add total norm
 		}
-		return sum;
-	}
-	
-	public double calculateTau(List<PwMData> data){
-		double totalNorm = 0;
-		for(PwMData d : data){
-			double norm  = 0;
-			for(Double x : d.getData()){
-				norm += Math.pow(x, 2);
-			}
-			norm = Math.sqrt(norm);
-			totalNorm += norm;
-		}
-		double tau = 0.1 * (totalNorm / data.size());
-		System.out.println("primal tau is " + tau);
-		return tau;
+		double gamma = 0.1 * (normSum / trainSize); // calc gamma
+		return gamma;
 	}
 
-	public double calculateKernelTau(int kernel, double param){
-		double norm  = 0;
-		for(PwMData d : this.getTrainData()){
-			if(kernel == 0){
-				norm += Math.sqrt(polyKernel(d.getData(), d.getData(), param));
-			}else if (kernel == 1){
-				norm += Math.sqrt(rbfKernel(d.getData(), d.getData(), param));
+	// calculate inner product of w and xi
+	public double calculatePrimalInnerProduct(double[] w, List<Double> xi){
+		int w_length = w.length; // length of w
+		int xi_size = xi.size(); // size of xi
+		double result = 0; // init result to 0
+		if(w_length == xi_size){ // if w and xi have same length
+			for(int i = 0; i < w_length; i++){ // iterate each corresponding element
+				result += w[i] * xi.get(i); // calc inner product
+			}
+		}else{
+			System.out.println(xi);
+			throw new IllegalArgumentException("Two vectors do not have same length");
+		}
+		return result;
+	}
+
+	// calculate gamma for dual/kernel perceptron
+	public double calculateKernelGamma(List<PwMData> trainDataSet, int kernel, double param){
+		double result = 0;
+		int trainSize = trainDataSet.size();
+		for(PwMData p : trainDataSet){
+			if(kernel == 0){ // polykernel
+				result += Math.sqrt(polyKernel(p.getData(), p.getData(), param));
+			}else if(kernel == 1){ // rbfkernel
+				result += Math.sqrt(rbfKernel(p.getData(), p.getData(), param));
 			}else{
 				throw new IllegalArgumentException("No such kernel");
 			}
 		}
-		double tau = 0.1 * (norm / this.getTrainData().size());
-		return tau;
+		double gamma = 0.1 * (result / trainSize);
+		return gamma;
 	}
-	
+
+	// poly kernel
 	public double polyKernel(List<Double> u, List<Double> v, double d){
-		double innerProduct = 0;
-		if(u.size() != v.size()){
-			throw new IllegalArgumentException("Two vectors do not have same length");
-		}else{
-			for(int k = 0; k < u.size(); k++){
-				innerProduct += u.get(k) * v.get(k);
+		double result = 0;
+		if(u.size() == v.size()){ // inner product of u and v
+			for(int i = 0; i < u.size(); i++){
+				result += u.get(i) * v.get(i);
 			}
+		}else{
+			throw new IllegalArgumentException("Two vectors do not have same length");	
 		}
-		innerProduct = innerProduct + 1;
-		double kernelResult = Math.pow(innerProduct, d);
-		return kernelResult;
+		result = result + 1; // + 1
+		result = Math.pow(result, d); // power d
+		return result;
 	}
-	
+
+	// RBF kernel
 	public double rbfKernel(List<Double> u, List<Double> v, double s){
 		double dist = 0;
-		if(u.size() == v.size()){
-			for(int i = 0; i < u.size(); i++){
-				dist += Math.pow((u.get(i) - v.get(i)), 2);
+		if(u.size() == v.size()){ 
+			for(int i = 0; i < u.size(); i++){ // calc ||u-v||^2
+				double diff = u.get(i) - v.get(i);
+				dist += Math.pow(diff, 2);
 			}
 		}
-		double power = -dist/(2 * Math.pow(s, 2));
-		double kernelResult = Math.exp(power);
-		return kernelResult;
+		double power = -(dist / (2 * Math.pow(s, 2)));
+		double result = Math.exp(power); 
+		return result;
 	}
-	
-	public int signFunction(double d){
-		if(d >= 0){
+	// sign function
+	public int sign(double test){
+		if(test >= 0){
 			return 1;
 		}else{
 			return -1;
 		}
-	} 
-	
+	}
+
 	public List<PwMData> getTrainData() {
 		return trainData;
 	}
@@ -217,10 +230,10 @@ public class Perceptron {
 	public void setTestData(List<PwMData> testData) {
 		this.testData = testData;
 	}
-
+	
 	public static void main(String[] args) throws IOException {
-		List<PwMData> trainData = readDataFile("data/ATrain.arff");
-		List<PwMData> testData = readDataFile("data/ATest.arff");
+		List<PwMData> trainData = readDataFile("data/BTrain.arff");
+		List<PwMData> testData = readDataFile("data/BTest.arff");
 		Perceptron p1 = new Perceptron(trainData, testData);
 		double[] w = p1.primalPwM();
 		double correctPrediction = 0;
@@ -228,7 +241,7 @@ public class Perceptron {
 			List<Double> data = instance.getData();
 			data.add((double) 1);
 			double innerProductOfwAndx = p1.calculatePrimalInnerProduct(w, data);
-			int predict = p1.signFunction(innerProductOfwAndx);
+			int predict = p1.sign(innerProductOfwAndx);
 			if(predict == instance.getClassifier()){
 				correctPrediction++;
 			}
@@ -238,63 +251,45 @@ public class Perceptron {
 		double accuracy = correctPrediction/(testData.size());
 		System.out.println("primal accuracy: " + accuracy);
 		
-		System.out.println("************ kernel version ***********");
-		List<PwMData> trainData2 = readDataFile("data/backTrain.arff");
-		List<PwMData> testData2 = readDataFile("data/backTest.arff");
-		Perceptron p2 = new Perceptron(trainData2, testData2);
-		int kernel = 1;
-		
-		System.out.println("train: " + trainData2.size() + "test: " + testData2.size());
-		double[] rbfparam = new double[]{0.1, 0.5, 1}; 
-		for(double d : rbfparam){
-		//for(double d = 1; d < 6; d++){
-			System.out.println(d);
-			double[] alphaPoly = p2.dualPwM(kernel, d);
-			double c = 0;
-			//System.out.println(c);
-			for(int i = 0; i < p2.getTestData().size(); i++){
-				PwMData xi = p2.getTestData().get(i);
-				double sum = 0;
-				int yi = xi.getClassifier();
-				
-				for(int k = 0; k < p2.getTrainData().size(); k++){
+
+		List<PwMData> trainData2 = readDataFile("data/BTrain.arff");
+		List<PwMData> testData2 = readDataFile("data/BTest.arff");
+		//double[] rbfparam = new double[]{0.1, 0.5, 1}; 
+		//for(double d : rbfparam){
+		for (double d = 1; d < 6; d++){
+			Perceptron p2 = new Perceptron(trainData2, testData2);
+			List<PwMData> trainDataSet = p2.getTrainData();
+			int trainSize = trainDataSet.size();
+			int testSize = p2.getTestData().size();
+			int kernel = 0;
+			double[] alpha = p2.dualPwM(kernel, d);
+			double correct_predictions = 0;
+			for(PwMData test : p2.getTestData()){
+				List<Double> test_data = test.getData();
+				int yi = test.getClassifier();
+				double tester = 0;
+				for(int k = 0; k < trainSize; k++){
 					double kernelResult = 0;
-					PwMData xk = p2.getTrainData().get(k);
-					int yk = xk.getClassifier();
+					//System.out.println(trainDataSet.get(k));
+					List<Double> xk = trainDataSet.get(k).getData();
+					int yk = trainDataSet.get(k).getClassifier();
 					if(kernel == 0){
-						kernelResult = p2.polyKernel(xk.getData(), xi.getData(), d);
+						kernelResult = p2.polyKernel(xk, test_data, d);
 					}else{
-						kernelResult = p2.rbfKernel(xk.getData(), xi.getData(), d);
+						kernelResult = p2.rbfKernel(xk, test_data, d);
 					}
-					sum += alphaPoly[k] * yk * kernelResult;
+					tester += alpha[k] * yk * kernelResult;
 				}
-				//System.out.println(dualSum);
-				int predict = p2.signFunction(sum);
-				if(predict == yi){
-					c++;
+				int prediction = p2.sign(tester);
+				if(prediction == yi){
+					correct_predictions++;
 				}
 			}
-				
-			System.out.println(c);
-			System.out.println(p2.getTestData().size());
-			double a = c/(p2.getTestData().size());
-			System.out.println("kernel accuracy:" + a);
-			
+			System.out.println("*********** kernel perceptron *********** d=" + d);
+			double arr_rate = correct_predictions / testSize;
+			System.out.println(correct_predictions);
+			System.out.println(testSize);
+			System.out.println("dual accuracy: " + arr_rate);
 		}
-		/*File folder = new File("data");
-		File[] listOfFiles = folder.listFiles();
-		for (int i = 0; i < listOfFiles.length; i++) {
-			if (listOfFiles[i].isFile()) {
-				System.out.println("File " + listOfFiles[i].getName());
-				if(listOfFiles[i].getName().contains("Test")){
-					System.out.println("test:" + listOfFiles[i].getName());
-				}
-			} else if (listOfFiles[i].isDirectory()) {
-				System.out.println("Directory " + listOfFiles[i].getName());
-		    }
-		}*/
-		
-		
 	}
-
 }
