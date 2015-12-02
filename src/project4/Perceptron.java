@@ -70,27 +70,16 @@ public class Perceptron {
 				double innerProductOfwAndx = calculatePrimalInnerProduct(w, d);
 				int predict = signFunction(innerProductOfwAndx);
 				int dataClassifier = pdata.getClassifier();
-				if(dataClassifier*innerProductOfwAndx < tau){
+				if((dataClassifier * innerProductOfwAndx) < tau){
+					//System.out.println("update w");
 					for(int k = 0; k < w_size; k++){
-						w[k] = w[k] + dataClassifier*(d.get(k));
+						w[k] = w[k] + dataClassifier * (d.get(k));
 					}
 				}
 			}
 		}
+
 		return w;
-	}
-	
-	public double calculatePrimalInnerProduct(double[] vector1, List<Double> data){
-		double sum = 0;
-		if(vector1.length != data.size()){
-			System.out.println(data);
-			throw new IllegalArgumentException("Two vectors do not have same length");
-		}else{
-			for(int k = 0; k < vector1.length; k++){
-				sum += vector1[k] * data.get(k);
-			}
-		}
-		return sum;
 	}
 	
 
@@ -123,7 +112,7 @@ public class Perceptron {
 					}else{
 						throw new IllegalArgumentException("No such kernel");
 					}
-					dualSum += alpha[k]*yk*kernelResult;
+					dualSum += alpha[k] * yk * kernelResult;
 				}
 				
 				int predict = signFunction(dualSum);
@@ -136,6 +125,19 @@ public class Perceptron {
 		return alpha;
 	}
 	
+	public double calculatePrimalInnerProduct(double[] vector1, List<Double> data){
+		double sum = 0;
+		if(vector1.length != data.size()){
+			System.out.println(data);
+			throw new IllegalArgumentException("Two vectors do not have same length");
+		}else{
+			for(int k = 0; k < vector1.length; k++){
+				sum += vector1[k] * data.get(k);
+			}
+		}
+		return sum;
+	}
+	
 	public double calculateTau(List<PwMData> data){
 		double totalNorm = 0;
 		for(PwMData d : data){
@@ -146,8 +148,8 @@ public class Perceptron {
 			norm = Math.sqrt(norm);
 			totalNorm += norm;
 		}
-		double tau = 0.1 * totalNorm / data.size();
-		System.out.println("tau is " + tau);
+		double tau = 0.1 * (totalNorm / data.size());
+		System.out.println("primal tau is " + tau);
 		return tau;
 	}
 
@@ -162,11 +164,11 @@ public class Perceptron {
 				throw new IllegalArgumentException("No such kernel");
 			}
 		}
-		double tau = 0.1 * norm / this.getTrainData().size();
+		double tau = 0.1 * (norm / this.getTrainData().size());
 		return tau;
 	}
 	
-	private static double polyKernel(List<Double> u, List<Double> v, double d){
+	public double polyKernel(List<Double> u, List<Double> v, double d){
 		double innerProduct = 0;
 		if(u.size() != v.size()){
 			throw new IllegalArgumentException("Two vectors do not have same length");
@@ -180,14 +182,14 @@ public class Perceptron {
 		return kernelResult;
 	}
 	
-	private static double rbfKernel(List<Double> u, List<Double> v, double s){
+	public double rbfKernel(List<Double> u, List<Double> v, double s){
 		double dist = 0;
 		if(u.size() == v.size()){
 			for(int i = 0; i < u.size(); i++){
 				dist += Math.pow((u.get(i) - v.get(i)), 2);
 			}
 		}
-		double power = -dist/(2*Math.pow(s, 2));
+		double power = -dist/(2 * Math.pow(s, 2));
 		double kernelResult = Math.exp(power);
 		return kernelResult;
 	}
@@ -234,18 +236,20 @@ public class Perceptron {
 		System.out.println(correctPrediction);
 		System.out.println(testData.size());
 		double accuracy = correctPrediction/(testData.size());
-		System.out.println(accuracy);
+		System.out.println("primal accuracy: " + accuracy);
 		
 		System.out.println("************ kernel version ***********");
-		List<PwMData> trainData2 = readDataFile("data/BTrain.arff");
-		List<PwMData> testData2 = readDataFile("data/BTest.arff");
+		List<PwMData> trainData2 = readDataFile("data/backTrain.arff");
+		List<PwMData> testData2 = readDataFile("data/backTest.arff");
 		Perceptron p2 = new Perceptron(trainData2, testData2);
-		System.out.print("train: " + trainData2.size() + "test: " + testData2.size());
+		int kernel = 1;
+		
+		System.out.println("train: " + trainData2.size() + "test: " + testData2.size());
 		double[] rbfparam = new double[]{0.1, 0.5, 1}; 
 		for(double d : rbfparam){
 		//for(double d = 1; d < 6; d++){
 			System.out.println(d);
-			double[] alphaPoly = p2.dualPwM(1, d);
+			double[] alphaPoly = p2.dualPwM(kernel, d);
 			double c = 0;
 			//System.out.println(c);
 			for(int i = 0; i < p2.getTestData().size(); i++){
@@ -257,8 +261,12 @@ public class Perceptron {
 					double kernelResult = 0;
 					PwMData xk = p2.getTrainData().get(k);
 					int yk = xk.getClassifier();
-					kernelResult = rbfKernel(xk.getData(), xi.getData(), d);
-					sum += alphaPoly[k]*yk*kernelResult;
+					if(kernel == 0){
+						kernelResult = p2.polyKernel(xk.getData(), xi.getData(), d);
+					}else{
+						kernelResult = p2.rbfKernel(xk.getData(), xi.getData(), d);
+					}
+					sum += alphaPoly[k] * yk * kernelResult;
 				}
 				//System.out.println(dualSum);
 				int predict = p2.signFunction(sum);
@@ -270,7 +278,7 @@ public class Perceptron {
 			System.out.println(c);
 			System.out.println(p2.getTestData().size());
 			double a = c/(p2.getTestData().size());
-			System.out.println(a);
+			System.out.println("kernel accuracy:" + a);
 			
 		}
 		/*File folder = new File("data");
