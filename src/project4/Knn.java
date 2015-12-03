@@ -61,11 +61,11 @@ public class Knn {
 	}
 
 	/**
-	 * 
-	 * @param test
-	 * @param kernel
-	 * @param param
-	 * @return
+	 * find the knn using kernels
+	 * @param test test data
+	 * @param kernel kernel option
+	 * @param param kernel param
+	 * @return nearest neighbor
 	 */
 	public List<PwMData> getKNearestNeighbors(PwMData test, int kernel, double param){
 		Comparator<PwMData> comparator = new DistanceComparator();
@@ -110,7 +110,7 @@ public class Knn {
 		}
 	}
 	
-
+	// getters and setters
 	public List<PwMData> getTrain_data_set() {
 		return train_data_set;
 	}

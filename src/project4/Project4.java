@@ -6,12 +6,14 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import weka.core.Instance;
 import weka.core.Instances;
 
 public class Project4 {
+
 	/**
 	 * read data from file using weka instance feature
 	 * @param filename input file name
@@ -20,7 +22,6 @@ public class Project4 {
 	 */
 	public static List<PwMData> readDataFile(String filename) throws IOException {
 		BufferedReader inputReader = null;
- 
 		try {
 			inputReader = new BufferedReader(new FileReader(filename));
 		} catch (FileNotFoundException ex) {
@@ -47,92 +48,116 @@ public class Project4 {
 		return list_data;
 	}
 	
+	/**
+	 * test primal perceptron
+	 * @param trainFileName training data file name
+	 * @param testFileName test data file name
+	 * @return test accuracy
+	 * @throws IOException
+	 */
 	public static double testPrimalPerceptron(String trainFileName, String testFileName) throws IOException{
-		List<PwMData> trainDataSet = readDataFile(trainFileName);
-		List<PwMData> testDataSet = readDataFile(testFileName);
-		Perceptron p = new Perceptron(trainDataSet, testDataSet);
-		int testSize = p.getTestData().size();
-		double[] w = p.primalPwM();
-		double correctPredictions = 0;
-		for(PwMData instance : p.getTestData()){
-			List<Double> xi = instance.getData();
-			xi.add((double) 1);
-			double innerProductOfwAndx = p.calculatePrimalInnerProduct(w, xi);
-			int predict = p.sign(innerProductOfwAndx);
-			//System.out.println(predict);
+		List<PwMData> trainDataSet = readDataFile(trainFileName); // get training data set 
+		List<PwMData> testDataSet = readDataFile(testFileName); // get test data set
+		Perceptron p = new Perceptron(trainDataSet, testDataSet); // init perceptron
+		int testSize = p.getTestData().size(); // test data size
+		double[] w = p.primalPwM(); // calc weight vector w
+		double correctPredictions = 0; // correct prediction
+		for(PwMData instance : p.getTestData()){ // iterate each test data
+			List<Double> xi = instance.getData(); // current test data
+			xi.add((double) 1); // add constant feature with value of 1 
+			double innerProductOfwAndx = p.calculatePrimalInnerProduct(w, xi); // calc inner product of w and xi
+			int predict = p.sign(innerProductOfwAndx); // prediction
 			if(predict == instance.getClassifier()){
-				correctPredictions++;
+				correctPredictions++; // increase correct prediction
 			}
 		}
-		double accuracy = correctPredictions / testSize;
+		double accuracy = correctPredictions / testSize; //accuracy
 		return accuracy;
 	}
 	
+	/**
+	 * test kernel perceptron
+	 * @param trainFileName training data file name
+	 * @param testFileName test data file name
+	 * @return test accuracy
+	 * @throws IOException
+	 */
 	public static double testDualPerceptron(String trainFileName, String testFileName, int kernel, double param) throws IOException{
-		List<PwMData> trainDataSet = readDataFile(trainFileName);
-		List<PwMData> testDataSet = readDataFile(testFileName);
-		Perceptron p = new Perceptron(trainDataSet, testDataSet);
-		int trainSize = p.getTrainData().size();
-		int testSize = p.getTestData().size();
-		double correctPredictions = 0;
-		double[] alpha = p.dualPwM(kernel, param);
+		List<PwMData> trainDataSet = readDataFile(trainFileName); // get training data set
+		List<PwMData> testDataSet = readDataFile(testFileName); // get test data set
+		Perceptron p = new Perceptron(trainDataSet, testDataSet); // init perceptron
+		int trainSize = p.getTrainData().size(); // training data size
+		int testSize = p.getTestData().size(); // test data size 
+		double correctPredictions = 0; // correct predictrions
+		double[] alpha = p.dualPwM(kernel, param); // init alpha
 		
-		for(PwMData test : p.getTestData()){
-			List<Double> test_data = test.getData();
-			int yi = test.getClassifier();
-			double tester = 0;
-			for(int k = 0; k < trainSize; k++){
-				double kernelResult = 0;
-				//System.out.println(trainDataSet.get(k));
-				PwMData pk = trainDataSet.get(k);
-				List<Double> xk = pk.getData();
-				int yk = pk.getClassifier();
-				if(kernel == 0){
-					//System.out.println("pk: " +  pk);
-					//System.out.println("test: " + test);
+		for(PwMData test : p.getTestData()){ // iterate each test data
+			List<Double> test_data = test.getData(); // get test data
+			int yi = test.getClassifier(); // get current test data label
+			double tester = 0; // tester to 0
+			for(int k = 0; k < trainSize; k++){ // iterate training data set
+				double kernelResult = 0; // init to 0
+				PwMData pk = trainDataSet.get(k); // current training data
+				List<Double> xk = pk.getData(); // get data
+				int yk = pk.getClassifier(); // traing data label
+				if(kernel == 0){ // poly kernel
 					kernelResult = PwMData.polyKernel(pk, test, param);
-				}else{
+				}else{ // rbf kernel
 					kernelResult = PwMData.rbfKernel(pk, test, param);
 				}
 				tester += alpha[k] * yk * kernelResult;
 			}
-			int prediction = p.sign(tester);
+			int prediction = p.sign(tester); // predict
 			if(prediction == yi){
 				correctPredictions++;
 			}
 		}
-		double accuracy = correctPredictions / testSize;
+		double accuracy = correctPredictions / testSize; // accuracy
 		return accuracy;
 	}
 	
+	/**
+	 * test primal knn
+	 * @param trainFileName training data file name
+	 * @param testFileName test data file name
+	 * @return test accuracy
+	 * @throws IOException
+	 */
 	public static double testPrimalKnn(String trainFileName, String testFileName) throws IOException{
-		List<PwMData> trainDataSet = readDataFile(trainFileName);
-		List<PwMData> testDataSet = readDataFile(testFileName);
-		Knn knn = new Knn(trainDataSet, testDataSet);
-		int testSize = testDataSet.size();
-		double correctPredictions = 0;
-		for(PwMData kd : knn.getTest_data_set()){
-			int kd_classifier = kd.getClassifier();
-			List<PwMData> nearest_neighbor = knn.getKNearestNeighbors(kd);
-			int prediction = knn.determineClass(nearest_neighbor);
+		List<PwMData> trainDataSet = readDataFile(trainFileName); // get training data set
+		List<PwMData> testDataSet = readDataFile(testFileName); // get test data set
+		Knn knn = new Knn(trainDataSet, testDataSet); // init knn
+		int testSize = testDataSet.size(); // test data size 
+		double correctPredictions = 0; 
+		for(PwMData kd : knn.getTest_data_set()){ // iterate test data
+			int kd_classifier = kd.getClassifier(); // current data label
+			List<PwMData> nearest_neighbor = knn.getKNearestNeighbors(kd); // find nearest neighbor
+			int prediction = knn.determineClass(nearest_neighbor); // determine class
 			if(prediction == kd_classifier){
 				correctPredictions++;
 			}
 		}
-		double accuracy = correctPredictions / testSize;
+		double accuracy = correctPredictions / testSize; // accuracy
 		return accuracy;
 	}
 	
+	/**
+	 * test kernel knn
+	 * @param trainFileName training data file name
+	 * @param testFileName test data file name
+	 * @return test accuracy
+	 * @throws IOException
+	 */
 	public static double testDualKnn(String trainFileName, String testFileName, int kernel, double param) throws IOException{
-		List<PwMData> trainDataSet = readDataFile(trainFileName);
-		List<PwMData> testDataSet = readDataFile(testFileName);
-		Knn knn = new Knn(trainDataSet, testDataSet);
-		int testSize = testDataSet.size();
-		double correctPredictions = 0;
-		for(PwMData kd : knn.getTest_data_set()){
-			int kd_classifier = kd.getClassifier();
-			List<PwMData> nearest_neighbor = knn.getKNearestNeighbors(kd, kernel, param);
-			int prediction = knn.determineClass(nearest_neighbor);
+		List<PwMData> trainDataSet = readDataFile(trainFileName); // get training data set
+		List<PwMData> testDataSet = readDataFile(testFileName); // get test data set
+		Knn knn = new Knn(trainDataSet, testDataSet); // init knn
+		int testSize = testDataSet.size(); // test data size
+		double correctPredictions = 0; 
+		for(PwMData kd : knn.getTest_data_set()){ //iterate each test data
+			int kd_classifier = kd.getClassifier(); // get current data label
+			List<PwMData> nearest_neighbor = knn.getKNearestNeighbors(kd, kernel, param); // calc nearest neighbor
+			int prediction = knn.determineClass(nearest_neighbor); //determin class
 			if(prediction == kd_classifier){
 				correctPredictions++;
 			}
@@ -141,30 +166,59 @@ public class Project4 {
 		return accuracy;
 	}	
 	
+	/**
+	 * main function
+	 * @param args
+	 * @throws IOException
+	 */
 	public static void main(String[] args) throws IOException {
-		double a = testPrimalPerceptron("data/BTrain.arff", "data/BTest.arff");
-		double b = testDualKnn("data/BTrain.arff", "data/BTest.arff", 1, 0.1);
-		double c = testDualKnn("data/BTrain.arff", "data/BTest.arff", 1, 0.5);
-		double d = testDualKnn("data/BTrain.arff", "data/BTest.arff", 1, 1);
-		/*double c = testDualPerceptron("/ATrain.arff", "ATest.arff", 0, 2);
-		double d = testDualPerceptron("ATrain.arff", "ATest.arff", 0, 3);
-		double e = testPrimalKnn("ATrain.arff", "ATest.arff");*/
-		System.out.println(b);
-		System.out.println(c);
-
-		System.out.println(d);
-		
-		/*File folder = new File("data");
+		double[] rbfS = new double[]{0.1, 0.5, 1};
+		File folder = new File(".");
 		File[] listOfFiles = folder.listFiles();
+		List<String> trainFileNames = new ArrayList<String>();
+		List<String> testFileNames = new ArrayList<String>();
 		for (int i = 0; i < listOfFiles.length; i++) {
 			if (listOfFiles[i].isFile()) {
-				System.out.println("File " + listOfFiles[i].getName());
-				if(listOfFiles[i].getName().contains("Test")){
-					System.out.println("test:" + listOfFiles[i].getName());
+				if(listOfFiles[i].getName().contains("Train")){
+					String trainFileName = listOfFiles[i].getName();
+					trainFileNames.add(trainFileName);
+				}else if(listOfFiles[i].getName().contains("Test")){
+					String testFileName = listOfFiles[i].getName();
+					testFileNames.add(testFileName);
 				}
-			} else if (listOfFiles[i].isDirectory()) {
-				System.out.println("Directory " + listOfFiles[i].getName());
-		    }
-		}*/
+			}
+		}
+		Collections.sort(trainFileNames.subList(1, trainFileNames.size()));
+		Collections.sort(testFileNames.subList(1, testFileNames.size()));
+		if(trainFileNames.size() == testFileNames.size()){
+			for(int i = 0; i < trainFileNames.size(); i++){
+				System.out.println("*************** results for " + trainFileNames.get(i) + " : " + testFileNames.get(i) + " *****************");
+				System.out.println("order: primal | polyKernel d=1 | polyKernel d=2 | polyKernel d=3 | polyKernel d=4 | polyKernel d=5 | rbfKernel s=0.1 | rbfKernel s=0.5 | rbfKernel s=1");
+				double knnPrimalAccuracy = testPrimalKnn(trainFileNames.get(i), testFileNames.get(i));
+				System.out.print("KNN: " + knnPrimalAccuracy + " | ");
+				for(int d = 1; d < 6; d++){
+					double knnPolyKernelResult = testDualKnn(trainFileNames.get(i), testFileNames.get(i), 0, d);
+					System.out.print(knnPolyKernelResult + " | ");
+				}
+				for(double s : rbfS){
+					double knnrbfKernelResult = testDualKnn(trainFileNames.get(i), testFileNames.get(i), 1, s);
+					System.out.print(knnrbfKernelResult + " | ");
+				}
+				System.out.println("");
+				double perceptronPrimalAccuracy = testPrimalPerceptron(trainFileNames.get(i), testFileNames.get(i));
+				System.out.print("Perceptron: " + perceptronPrimalAccuracy + " | ");
+				for(int d = 1; d < 6; d++){
+					double perceptronpolyKernelResult = testDualPerceptron(trainFileNames.get(i), testFileNames.get(i), 0, d);
+					System.out.print(perceptronpolyKernelResult + " | ");
+				}
+				for(double s : rbfS){
+					double perceptronrbfKernelResult = testDualPerceptron(trainFileNames.get(i), testFileNames.get(i), 1, s);
+					System.out.print(perceptronrbfKernelResult + " | ");
+				}
+				System.out.println("");
+			}
+		}else{
+			throw new IllegalArgumentException("Test and Train files are not paired, please check your files");
+		}
 	}
 }

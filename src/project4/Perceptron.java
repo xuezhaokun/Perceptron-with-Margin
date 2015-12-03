@@ -1,28 +1,31 @@
 package project4;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import weka.core.Instance;
-import weka.core.Instances;
-
+/**
+ * 
+ * @author zhaokunxue
+ * implement perceptron algorithm
+ */
 public class Perceptron {
-	//private static int iterations = 50; //I
-	private List<PwMData> trainData;
-	private List<PwMData> testData;
 	
+	private List<PwMData> trainData; // train data
+	private List<PwMData> testData; // test data
 	
+	/**
+	 * constructor
+	 * @param trainData train data set
+	 * @param testData test data set
+	 */
 	public Perceptron(List<PwMData> trainData, List<PwMData> testData) {
 		this.trainData = trainData;
 		this.testData = testData;
 	}
 
 
-	// primal perceptron
+	/**
+	 * implement primal perceptron algorithm
+	 * @return w
+	 */
 	public double[] primalPwM(){
 		List<PwMData> trainDataSet = this.getTrainData(); // get train data
 		int trainSize = trainDataSet.size();
@@ -54,7 +57,12 @@ public class Perceptron {
 		return w;
 	}
 
-	// dual/kernel perceptron polyKernel = 0; rbfKernel = 1. param: d->polykernel;s->rbfkernel
+	/**
+	 * implement dual/kernel perceptron algorithm
+	 * @param kernel 0:polynomial kernel | 1:rbf kernel
+	 * @param param d for polynomial kernel | s for rbf kernel
+	 * @return return alpha[]
+	 */
 	public double[] dualPwM(int kernel, double param){
 		List<PwMData> trainDataSet = this.getTrainData(); // get trainning data 
 		int trainSize = trainDataSet.size(); // training data size
@@ -92,7 +100,11 @@ public class Perceptron {
 		return alpha;
 	}
 
-	// calculate gamma for primal perceptron
+	/**
+	 * calculate gamma
+	 * @param trainDataSet training data set
+	 * @return gamma
+	 */
 	public double calculateGamma(List<PwMData> trainDataSet){
 		double normSum = 0; // init sum of norm to 0
 		int trainSize = trainDataSet.size(); // training data size
@@ -111,7 +123,12 @@ public class Perceptron {
 		return gamma;
 	}
 
-	// calculate inner product of w and xi
+	/**
+	 * calculate inner product for w and xi
+	 * @param w weight vector
+	 * @param xi data
+	 * @return inner product
+	 */
 	public double calculatePrimalInnerProduct(double[] w, List<Double> xi){
 		int w_length = w.length; // length of w
 		int xi_size = xi.size(); // size of xi
@@ -127,7 +144,13 @@ public class Perceptron {
 		return result;
 	}
 	
-	// calculate gamma for dual/kernel perceptron
+	/**
+	 * calculate gamma using kernel
+	 * @param trainDataSet training data set
+	 * @param kernel 0:poly kernel | 1: rbf kernel
+	 * @param param d for polynomial kernel | s for rbf kernel
+	 * @return gamma
+	 */
 	public double calculateKernelGamma(List<PwMData> trainDataSet, int kernel, double param){
 		double result = 0;
 		int trainSize = trainDataSet.size();
@@ -152,7 +175,8 @@ public class Perceptron {
 			return -1;
 		}
 	}
-
+	
+	// getters and setters
 	public List<PwMData> getTrainData() {
 		return trainData;
 	}
