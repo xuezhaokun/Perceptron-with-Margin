@@ -192,30 +192,36 @@ public class Project4 {
 		Collections.sort(testFileNames.subList(1, testFileNames.size()));
 		if(trainFileNames.size() == testFileNames.size()){
 			for(int i = 0; i < trainFileNames.size(); i++){
-				System.out.println("*************** results for " + trainFileNames.get(i) + " : " + testFileNames.get(i) + " *****************");
-				System.out.println("order: primal | polyKernel d=1 | polyKernel d=2 | polyKernel d=3 | polyKernel d=4 | polyKernel d=5 | rbfKernel s=0.1 | rbfKernel s=0.5 | rbfKernel s=1");
-				double knnPrimalAccuracy = testPrimalKnn(trainFileNames.get(i), testFileNames.get(i));
-				System.out.print("KNN: " + knnPrimalAccuracy + " | ");
-				for(int d = 1; d < 6; d++){
-					double knnPolyKernelResult = testDualKnn(trainFileNames.get(i), testFileNames.get(i), 0, d);
-					System.out.print(knnPolyKernelResult + " | ");
+				String[] trainFileName = trainFileNames.get(i).split("(?=\\p{Upper})");
+				String[] testFileName = testFileNames.get(i).split("(?=\\p{Upper})");
+				if(trainFileName[0].equals(testFileName[0])){
+					System.out.println("*************** results for " + trainFileNames.get(i) + " : " + testFileNames.get(i) + " *****************");
+					System.out.println("order: primal | polyKernel d=1 | polyKernel d=2 | polyKernel d=3 | polyKernel d=4 | polyKernel d=5 | rbfKernel s=0.1 | rbfKernel s=0.5 | rbfKernel s=1");
+					double knnPrimalAccuracy = testPrimalKnn(trainFileNames.get(i), testFileNames.get(i));
+					System.out.print("KNN: " + knnPrimalAccuracy + " | ");
+					for(int d = 1; d < 6; d++){
+						double knnPolyKernelResult = testDualKnn(trainFileNames.get(i), testFileNames.get(i), 0, d);
+						System.out.print(knnPolyKernelResult + " | ");
+					}
+					for(double s : rbfS){
+						double knnrbfKernelResult = testDualKnn(trainFileNames.get(i), testFileNames.get(i), 1, s);
+						System.out.print(knnrbfKernelResult + " | ");
+					}
+					System.out.println("");
+					double perceptronPrimalAccuracy = testPrimalPerceptron(trainFileNames.get(i), testFileNames.get(i));
+					System.out.print("Perceptron: " + perceptronPrimalAccuracy + " | ");
+					for(int d = 1; d < 6; d++){
+						double perceptronpolyKernelResult = testDualPerceptron(trainFileNames.get(i), testFileNames.get(i), 0, d);
+						System.out.print(perceptronpolyKernelResult + " | ");
+					}
+					for(double s : rbfS){
+						double perceptronrbfKernelResult = testDualPerceptron(trainFileNames.get(i), testFileNames.get(i), 1, s);
+						System.out.print(perceptronrbfKernelResult + " | ");
+					}
+					System.out.println("");
+				}else{
+					throw new IllegalArgumentException("Your corresponding Train and Test files' names do not have the same prefix, please check it");
 				}
-				for(double s : rbfS){
-					double knnrbfKernelResult = testDualKnn(trainFileNames.get(i), testFileNames.get(i), 1, s);
-					System.out.print(knnrbfKernelResult + " | ");
-				}
-				System.out.println("");
-				double perceptronPrimalAccuracy = testPrimalPerceptron(trainFileNames.get(i), testFileNames.get(i));
-				System.out.print("Perceptron: " + perceptronPrimalAccuracy + " | ");
-				for(int d = 1; d < 6; d++){
-					double perceptronpolyKernelResult = testDualPerceptron(trainFileNames.get(i), testFileNames.get(i), 0, d);
-					System.out.print(perceptronpolyKernelResult + " | ");
-				}
-				for(double s : rbfS){
-					double perceptronrbfKernelResult = testDualPerceptron(trainFileNames.get(i), testFileNames.get(i), 1, s);
-					System.out.print(perceptronrbfKernelResult + " | ");
-				}
-				System.out.println("");
 			}
 		}else{
 			throw new IllegalArgumentException("Test and Train files are not paired, please check your files");
